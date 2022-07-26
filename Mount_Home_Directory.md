@@ -24,7 +24,7 @@ pwd
 
 3. In VSCode, update your _devcontainer.json_ file and add the following.
 
-```json
+```js
 // The optional 'runArgs' property can be used to specify additional runtime arguments
  "runArgs": [
    // Mount home directory as a volume to preserve settings like .ssh and .gitconfig
