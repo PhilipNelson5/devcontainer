@@ -18,7 +18,9 @@ RUN set -eux; \
     https://mirrors.edge.kernel.org/pub/software/scm/git/git-${GIT_VERSION}.tar.gz; \
   tar -xzf git-${GIT_VERSION}.tar.gz; \
   cd git-${GIT_VERSION}; \
-  make --silent --jobs "$(nproc)" prefix=/usr all; \
+  # make --silent --jobs "$(nproc)" prefix=/usr NO_TCLTK=NoThanks profile-fast; \
+  # make --silent --jobs "$(nproc)" prefix=/usr PROFILE=BUILD install; \
+  make --silent --jobs "$(nproc)" prefix=/usr NO_TCLTK=NoThanks all; \
   make --silent --jobs "$(nproc)" prefix=/usr install; \
   cd ..; \
   rm -rf git-${GIT_VERSION}.tar.gz git-${GIT_VERSION};
