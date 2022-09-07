@@ -25,13 +25,16 @@ RUN set -eux; \
   cd ..; \
   rm -rf git-${GIT_VERSION}.tar.gz git-${GIT_VERSION};
 ```
+
 vscode extensions
-```
+
+```text
 "eamodio.gitlens",
 "mhutchie.git-graph",
 ```
 
 ---
+
 ## Cmake
 
 [latest](https://cmake.org/download/)
@@ -53,12 +56,155 @@ RUN set -eux; \
   ln -s /opt/cmake/bin/cmake /usr/bin/cmake; \
   rm cmake.sh;
 ```
+
 vscode extension
-```
+
+```text
 "ms-vscode.cpptools-extension-pack",
+"brobeson.ctest-lab",
 ```
 
 ---
+
+## Clang / Clang-tools
+
+[latest](https://github.com/llvm/llvm-project/tags)
+
+```docker
+RUN set -eux; \
+  LLVM_VERSION=12.0.1; \
+  git clone --depth 1 --branch llvmorg-${LLVM_VERSION} https://github.com/llvm/llvm-project.git; \
+  mkdir build; \
+  cmake \
+    -G "Unix Makefiles" \
+    -Wno-dev \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" \
+    -S llvm-project/llvm \
+    -B build; \
+  cd build; \
+  make --silent --jobs "$(nproc)" install clang clang-format clang-tidy; \
+  cd ..;
+```
+
+vscode task
+
+```json
+{
+  "label": "Clang-Tidy",
+  "type": "shell",
+  "command": "find",
+  "args": [
+    ".",
+    "-name",
+    "'*.[ch]pp'",
+    "-exec",
+    "clang-tidy",
+    "-p=../build/compile_commands.json",
+    "--extra-arg='-Wno-unknown-warning-option'",
+    "{}",
+    "\\;"
+  ],
+  "options": {
+    "cwd": "${workspaceFolder}"
+  },
+  "problemMatcher": {
+    "owner": "clang-tidy task",
+    "fileLocation": "absolute",
+    "source": "(",
+    "pattern": {
+      "regexp": "^(.*):(\\d+):(\\d+):\\s+(error):\\s+(.*)\\[(.*),",
+      "file": 1,
+      "line": 2,
+      "column": 3,
+      "severity": 4,
+      "message": 5,
+      "code": 6
+    }
+  }
+},
+```
+
+vscode extension
+
+```text
+"xaver.clang-format",
+"notskm.clang-tidy",
+```
+
+---
+
+## Include What You Use
+
+[latest](https://github.com/include-what-you-use/include-what-you-use/branches/stale) match to the clang version you are using
+
+```docker
+RUN set -eux; \
+  IWYU_VERSION=clang_12; \
+  git clone --depth 1 --branch ${IWYU_VERSION} https://github.com/include-what-you-use/include-what-you-use.git; \
+  cmake \
+    -G "Unix Makefiles" \
+    -Wno-dev \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DLLVM_ENABLE_PROJECTS=clang \
+    -DLLVM_EXTERNAL_PROJECTS=iwyu \
+    -DLLVM_EXTERNAL_IWYU_SOURCE_DIR=include-what-you-use \
+    -S llvm-project/llvm \
+    -B build; \
+  cd build; \
+  make --silent --jobs "$(nproc)" install include-what-you-use; \
+  cd ..; \
+  rm -rf llvm-project include-what-you-use build;
+```
+
+vscode task
+
+```json
+{
+  "label": "Include What You Use",
+  "type": "shell",
+  "command": ".vscode/task-iwyu.sh",
+  "options": {
+    "cwd": "${workspaceFolder}"
+  },
+  "problemMatcher": {
+    "owner": "iwyu",
+    "fileLocation": "absolute",
+    "pattern": [
+      {
+        "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+        "file": 1,
+        "line": 2,
+        "column": 3,
+        "severity": 4,
+        "message": 5
+      },
+      {
+        "regexp": "^(#include.*)$",
+        "message": 1,
+      }
+    ]
+  }
+}
+```
+
+.vscode/task-iwyu.sh
+
+```bash
+shopt -s globstar
+iwyu_tool.py \
+  -o clang \
+  -j "$(nproc)" \
+  -p ../build/ \
+  ./**/*.cpp -- \
+  -Xiwyu --mapping_file="$(pwd)"/.iwyu.imp \
+  -Xiwyu --quoted_includes_first \
+  -Xiwyu --cxx17ns \
+  -Wno-unknown-warning-option
+```
+
+---
+
 ## Valgrind
 
 [latest](https://valgrind.org/downloads/current.html)
@@ -79,6 +225,7 @@ RUN set -eux; \
 ```
 
 ---
+
 ## Python3
 
 python [versions](https://www.python.org/ftp/python/)
@@ -108,6 +255,7 @@ RUN set -eux; \
 ```
 
 ---
+
 ## gcovr and lizard
 
 gcovr [latest](https://pypi.org/project/gcovr/)
@@ -124,9 +272,57 @@ RUN set -eux; \
     lizard==${LIZARD_VERSION};
 ```
 
+vscode task for gcovr
+
+```json
+{
+  "label": "Test Coverage",
+  "type": "shell",
+  "command": "gcovr",
+  "options": {
+    "cwd": "${command:cmake.buildDirectory}"
+  },
+  "args": [
+    "--root",
+    "${workspaceFolder}",
+    "--html-details",
+    "test_coverage/index.html",
+    "."
+  ],
+  "problemMatcher": []
+},
+```
+
+vscode task for lizard
+
+```json
+{
+  "label": "Lizard CCN",
+  "type": "shell",
+  "command": "lizard",
+  "args": [
+    "--CCN",
+    "10",
+    "--length",
+    "50",
+    "--arguments",
+    "5",
+    "--warnings_only",
+    "--modified"
+  ],
+  "options": {
+    "cwd": "${workspaceFolder}"
+  },
+  "problemMatcher": "$gcc"
+},
+```
+
 ---
+
 ## Hadolint (dockerfile lint)
+
 [latest](https://github.com/hadolint/hadolint/releases)
+
 ```docker
 RUN set -eux; \
   HADOLINT_VERSION=2.10.0; \
@@ -136,12 +332,15 @@ RUN set -eux; \
     https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}/hadolint-Linux-x86_64; \
   chmod +x /usr/bin/hadolint;
 ```
+
 vscode extension
-```
+
+```text
 "exiasr.hadolint",
 ```
 
 ---
+
 ## Shellcheck (shell script lint)
 
 [latest](https://github.com/koalaman/shellcheck/releases)
@@ -156,12 +355,15 @@ RUN set -eux; \
   cp shellcheck-v${SHELLCHECK_VERSION}/shellcheck /usr/local/bin; \
   rm -rf shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz shellcheck-v${SHELLCHECK_VERSION};
 ```
+
 vscode extension
-```
+
+```text
 "timonwong.shellcheck",
 ```
 
 ---
+
 ## Cppcheck (C++ static analysis)
 
 [latest](https://github.com/danmar/cppcheck/tags)
@@ -217,8 +419,10 @@ RUN set -eux; \
   ln -s /opt/protoc-${PROTO_VERSION}/bin/protoc /usr/local/bin/protoc; \
   rm protoc-${PROTO_VERSION}-linux-x86_64.zip;
 ```
+
 vscode extension
-```
+
+```text
 "zxh404.vscode-proto3",
 ```
 
@@ -256,7 +460,7 @@ RUN set -eux; \
 
 Installs latest
 
-**Note:** This is a very long install, put it early in the dockerfile to 
+**Note:** This is a very long install, put it early in the dockerfile to
 keep it cached when making changes to the dockerfile.
 
 ```docker
@@ -279,7 +483,36 @@ RUN set -eux; \
   cd ..; \
   rm -rf install-tl-unx.tar.gz install-tl-*;
 ```
+
 vscode extension
-```
+
+```text
 "James-Yu.latex-workshop",
+```
+
+---
+
+## Plant UML
+
+[latest](https://github.com/plantuml/plantuml/releases)
+
+```docker
+RUN set -eux; \
+  PLANTUML_VERSION=1.2022.6; \
+  yum install --assumeyes \
+    java-11; \
+  yum --assumeyes clean all; \
+  wget \
+    --directory-prefix=/opt/ \
+    --progress=dot:mega \
+    https://github.com/plantuml/plantuml/releases/download/v${PLANTUML_VERSION}/plantuml-${PLANTUML_VERSION}.jar; \
+  echo >> /usr/local/bin/plantuml '#!/bin/sh'; \
+  echo >> /usr/local/bin/plantuml "java -jar /opt/plantuml-${PLANTUML_VERSION}.jar" '"$@"'; \
+  chmod +x /usr/local/bin/plantuml;
+```
+
+vscode extension
+
+```text
+"jebbs.plantuml",
 ```
