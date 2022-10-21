@@ -134,6 +134,30 @@ vscode extension
 
 ---
 
+## Boost
+[latest](https://www.boost.org/users/download/)
+
+```docker
+RUN set -eux; \
+  BOOST_VERSION_MAJOR=1; \
+  BOOST_VERSION_MINOR=80; \
+  BOOST_VERSION_BUILD=0; \
+  BOOST_VERSION_UNDER=${BOOST_VERSION_MAJOR}_${BOOST_VERSION_MINOR}_${BOOST_VERSION_BUILD}; \
+  BOOST_VERSION_DOT=${BOOST_VERSION_MAJOR}.${BOOST_VERSION_MINOR}.${BOOST_VERSION_BUILD}; \
+  wget \
+    --progress=dot:mega \
+    https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION_UNDER}.tar.gz; \
+  tar -zxf boost_${BOOST_VERSION_UNDER}.tar.gz; \
+  cd boost_${BOOST_VERSION_UNDER}; \
+  ./bootstrap.sh; \
+  ./b2 install --prefix=/usr; \
+  cd ..; \
+  rm -r boost_${BOOST_VERSION_UNDER} boost_${BOOST_VERSION_UNDER}.tar.gz; \
+  ldconfig;
+```
+
+---
+
 ## Include What You Use
 
 [latest](https://github.com/include-what-you-use/include-what-you-use/branches/stale) match to the clang version you are using
@@ -237,6 +261,7 @@ RUN set -eux; \
   PYTHON_VERSION=3.9.13; \
   PIP_VERSION=22.2; \
   yum install --assumeyes \
+    bzip2-devel \
     openssl-devel \
     libffi-devel; \
   yum --assumeyes clean all; \
@@ -408,6 +433,8 @@ ENV PATH "$PATH:/opt/node/bin"
 
 [latest](https://github.com/protocolbuffers/protobuf/releases)
 
+### Just the compilers
+
 ```docker
 WORKDIR /opt/
 RUN set -eux; \
@@ -418,6 +445,26 @@ RUN set -eux; \
   unzip protoc-${PROTO_VERSION}-linux-x86_64.zip -d protoc-${PROTO_VERSION}; \
   ln -s /opt/protoc-${PROTO_VERSION}/bin/protoc /usr/local/bin/protoc; \
   rm protoc-${PROTO_VERSION}-linux-x86_64.zip;
+```
+
+### Full installation
+
+```docker
+# Install protobuf 3 (leave the 3 off the version here)
+RUN set -eux; \
+  PROTOBUF_VERSION=21.7; \
+  wget \
+    --progress=dot:mega \
+    https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protobuf-cpp-3.${PROTOBUF_VERSION}.tar.gz; \
+  tar -xzf protobuf-cpp-3.${PROTOBUF_VERSION}.tar.gz; \
+  cd protobuf-3.${PROTOBUF_VERSION}; \
+  ./configure --disable-shared --prefix=/usr; \
+  make --silent --jobs $(nproc); \
+  make --silent check; \
+  make --silent --jobs $(nproc) install; \
+  ldconfig; \
+  cd ..; \
+  rm -r protobuf-3.${PROTOBUF_VERSION} protobuf-cpp-3.${PROTOBUF_VERSION}.tar.gz
 ```
 
 vscode extension
@@ -515,4 +562,19 @@ vscode extension
 
 ```text
 "jebbs.plantuml",
+```
+
+---
+
+## Helm
+
+[latest](https://github.com/helm/helm/releases)
+
+```docker
+RUN set -eux; \
+  HELM_VERSION=3.10.1; \
+  curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3; \
+  chmod 700 get_helm.sh; \
+  ./get_helm.sh --version ${HELM_VERSION}; \
+  rm get_helm.sh;
 ```
