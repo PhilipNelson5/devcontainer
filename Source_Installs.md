@@ -271,12 +271,58 @@ RUN set -eux; \
     https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz; \
   tar -xzf Python-${PYTHON_VERSION}.tar.gz; \
   cd Python-${PYTHON_VERSION}; \
-  ./configure --enable-optimizations --with-lto; \
+  ./configure --enable-optimizations --with-lto CFLAGS=-fPIC; \
   make --silent --jobs "$(nproc)"; \
   make --silent --jobs "$(nproc)" install; \
+  ln -s /usr/local/bin/python3 /usr/local/bin/python; \
   cd ..; \
   rm -rf Python-${PYTHON_VERSION}.tar.gz Python-${PYTHON_VERSION}; \
   pip3 install --no-cache-dir --upgrade pip==${PIP_VERSION};
+```
+
+_apt-get_
+```docker
+RUN set -eux; \
+    apt-get update; \
+    apt-get install --assume-yes --no-install-recommends \
+        libsqlite3-dev \
+        pkg-config \
+        zlib1g-dev \
+        libbz2-dev \
+        libssl-dev \
+        libffi-dev; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/*;
+```
+
+---
+
+## SWIG
+
+swig [versions](https://sourceforge.net/projects/swig/files/swig/)
+
+pcre2 [versions](https://sourceforge.net/projects/pcre/files/pcre2/)
+
+```docker
+RUN set -eux; \
+    SWIG_VERSION=4.2.1; \
+    PCRE2_VERSION=10.37; \
+    wget \
+        --progress=dot:mega \
+        --output-document=swig-${SWIG_VERSION}.tar.gz \
+        https://sourceforge.net/projects/swig/files/swig/swig-${SWIG_VERSION}/swig-${SWIG_VERSION}.tar.gz/download; \
+    tar -xzf swig-${SWIG_VERSION}.tar.gz; \
+    cd swig-${SWIG_VERSION}; \
+    wget \
+        --progress=dot:mega \
+        --output-document=pcre2-${PCRE2_VERSION}.tar.bz2 \
+        https://sourceforge.net/projects/pcre/files/pcre2/${PCRE2_VERSION}/pcre2-${PCRE2_VERSION}.tar.bz2/download; \
+    Tools/pcre-build.sh; \
+    ./configure; \
+    make --silent --jobs "$(nproc)"; \
+    make --silent install; \
+    cd ..; \
+    rm -r swig-${SWIG_VERSION}.tar.gz swig-${SWIG_VERSION}
 ```
 
 ---
